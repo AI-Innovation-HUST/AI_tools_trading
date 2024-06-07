@@ -208,7 +208,7 @@ class TransformerDecoder(nn.Module):
                          d_ff=d_ff, dropout=dropout,n_heads=n_heads)
             for _ in range(n_blocks)
         ])
-        self.linear = nn.Linear(d_model,28)
+        self.linear = nn.Linear(d_model,2)
         self.soft = nn.Softmax(dim=2)
         
     def forward(self, x: torch.FloatTensor, 
@@ -248,10 +248,9 @@ class WordPositionEmbedding(nn.Module):
         self.position_embedding = PositionalEmbedding(d_model)
         
     def forward(self, x: torch.LongTensor, mask=None) -> torch.FloatTensor:
-        # print("check:",x.shape)
-        
+        x = torch.flatten(x,0)
         a = self.word_embedding(x.long())
-        
+                
         b = self.position_embedding(x.unsqueeze(0).long())
 
         # print(a.shape,b.shape)

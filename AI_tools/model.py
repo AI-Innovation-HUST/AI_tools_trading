@@ -10,8 +10,9 @@ import matplotlib.pyplot as plt
 import torch
 import random
 from coin_dataloader import *
+from tqdm import tqdm
 class Transformer(nn.Module):
-    def __init__(self,n_blocks=2,d_model=16,n_heads=4,d_ff=256,dropout=0.2,vocab_size=128):
+    def __init__(self,n_blocks=2,d_model=16,n_heads=4,d_ff=256,dropout=0.2,vocab_size=28):
         super().__init__()
         self.emb = WordPositionEmbedding(vocab_size = vocab_size,d_model=d_model)
         self.decoder_emb = WordPositionEmbedding(vocab_size=vocab_size,d_model=d_model)
@@ -19,12 +20,13 @@ class Transformer(nn.Module):
         self.decoder = TransformerDecoder(n_blocks=n_blocks,d_model=d_model,d_feature=16,n_heads=n_heads,d_ff=d_ff,dropout=0.2)
     
     def forward(self,x):
-        g = self.emb(x.unsqueeze(0))
+        g = self.emb(x)
         encoded = self.encoder(g)
         # print("Pass encoder: ",encoded.shape)/\
         p = self.decoder_emb(x)
         # print("pass decoder")
         y = self.decoder(p, encoded)
+        # print("SHAPE",y.shape)
         return y;
 
 
@@ -38,16 +40,17 @@ def evaluate(eval_model,epoch,criterion,data_source):
         cum_loss = 0
         acc_count = 0
         accs = 0
-        for batch, i in enumerate(data_source):
-            data, targets = data_source
-            # targets = embs(targets)
+        for batch in tqdm(data_source):
+            data, targets = batch
+            # targets = embs(targets.long())
+            targets = targets.view(-1,2)
             output = eval_model(data)
-            output = output.view(-1,ntokens)
+            output = output.view(-1,2)
             loss = criterion(output,targets)
-            accs += ((torch.argmax(output,dim=1)==targets).sum().item()/output.size(0))
+            # accs += ((torch.argmax(output,dim=1)==targets).sum().item()/output.size(0))
             cum_loss += loss
             count+=1
-        print(epoch,"Loss: ",(cum_loss/count),"Accuracy ",accs/count)
+        print(epoch,"Loss: ",(cum_loss/count))
     return cum_loss/ (count)
 
 

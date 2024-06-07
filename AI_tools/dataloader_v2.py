@@ -9,36 +9,61 @@ import matplotlib.pyplot as plt
 import torch
 import random
 import pandas as pd
+import talib as ta
+
 class CoinDataset(Dataset):
-    def __init__(self, data_frame, transform=None):
+    def __init__(self, data_frame,mean,std):
         self.data_frame = data_frame
-        # print("Size of dataframe: ",len(self.data_frame['o']))
-        self.transform = transform
-        self.sample = None 
-        self.target = None
+        self.mean=mean
+        self.std=std
 
     def __len__(self):
-        return len(self.data_frame)
+        # Calculate the number of samples considering potential padding
+        data_len = len(self.data_frame)
+        return data_len - (data_len % 16)  # Subtract remainder to ensure divisibility by 16
 
     def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
+        sample = []
+        target = []
+        '''
+        Quy đổi theo công thức Z= X-u/xich_ma 
+        trong đó u là mean 
+        xich_ma là phân bố chuẩn
+        '''
+        sample.append(abs((self.data_frame['o'][idx]-self.mean))/self.std)
+        target.append([(abs((self.data_frame['h'][idx+1]-self.mean))/self.std),(abs((self.data_frame['l'][idx+1]-self.mean))/self.std)])
         
-        if idx < len(self.data_frame['o'])-1:
-            self.sample = self.data_frame['o'][idx]/100000
-            self.target = self.data_frame['o'][idx+1]/100000
-            # sample = {col: sample[col] for col in self.data_frame.columns}
+        # change value to tensor
 
-            if self.transform:
-                self.sample = self.transform(self.sample)
+        sample = torch.tensor(sample)  # Add leading dimension for [1, 16]
+        target = torch.tensor(target)  # Add leading dimension for [1, 16]
 
-        return self.sample,self.target
 
-# Ví dụ về cách sử dụng CoinDataset và DataLoader
+        return sample, target
+
+# # Ví dụ về cách sử dụng CoinDataset và DataLoader
 # if __name__ == "__main__":
-#     coin_dataset = CoinDataset(csv_file='Dataset/test.csv')
+#     import pandas as pd 
+#     import numpy as np
+#     df = pd.read_csv('Dataset/test.csv')
+#     import pandas as pd
 
+#     # Load CSV data into a DataFrame
+
+#     # Select numerical column
+#     numerical_data = df['o'].to_numpy()
+#     mean = np.mean(numerical_data)
+#     std = np.std(numerical_data)
+
+ 
+
+#     # Print test results
+#     print("mean:",np.mean(numerical_data))
+#     print("std:", np.std(numerical_data))
+#     coin_dataset = CoinDataset(df,mean=mean,std=std)
 #     dataloader = DataLoader(coin_dataset, batch_size=16, shuffle=True, num_workers=0)
-
-#     for i_batch, sample_batched in enumerate(dataloader):
-#         print(i_batch, sample_batched)
+    
+#     for data in dataloader:
+#         d,t = data
+#         print(d)
+#         break
