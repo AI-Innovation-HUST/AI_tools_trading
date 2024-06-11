@@ -67,7 +67,7 @@ if __name__ == '__main__':
     # # print(train_data.shape)
     # val_data = batchify(val_data,batch_size)
     # test_data = batchify(train_data,batch_size)
-    model = Transformer(n_blocks=4,d_model=96,n_heads=8,d_ff=256,dropout=0.5)
+    model = Transformer(n_blocks=4,d_model=16,n_heads=8,d_ff=256,dropout=0.5)
     # model = torch.load("modelb1024")
     model.to(dev)
     
@@ -89,7 +89,7 @@ if __name__ == '__main__':
             data, targets = batch
             targets = targets.view(-1,2)
             print(data.shape,targets.shape)
-            # print(data,targets)
+            print(data,targets)
             output = model(data)
             output = output.view(-1,2)
             # print(output.shape)
