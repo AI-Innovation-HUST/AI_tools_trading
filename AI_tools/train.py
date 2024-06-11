@@ -5,6 +5,10 @@ from dataloader_v2 import *
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import ta
+from scaler import *
+
+
+
 
 def get_data(files,ptype):
     data = []
@@ -23,12 +27,18 @@ def calculate(df):
     print("mean:",np.mean(numerical_data))
     print("std:", np.std(numerical_data))
     return mean,std
+
+
+
+
+
 def load_data(csv_file, test_size=0.1, val_size=0.2):
     
     df = pd.read_csv(csv_file)
     df = ta.add_all_ta_features(df, "o", "h", "l", "c", "vol", fillna=True)
     df.dropna(inplace=True)
-    
+    scaler = ScalerData(method='minmax') # test method
+    df = scaler.fit_transform(df)
     mean,std = calculate(df)
     train_val_df, test_df = train_test_split(df, test_size=test_size, shuffle=False, random_state=42)
     train_df, val_df = train_test_split(train_val_df, test_size=0.2, shuffle=False, random_state=42)
@@ -38,6 +48,8 @@ def load_data(csv_file, test_size=0.1, val_size=0.2):
     test_dataset = CoinDataset(test_df.reset_index(drop=True),mean=mean,std=std)
 
     return train_dataset, val_dataset, test_dataset
+
+
 
 if __name__ == '__main__':
     data = []
