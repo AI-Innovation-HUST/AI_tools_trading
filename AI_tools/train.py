@@ -4,7 +4,7 @@ from model import *
 from dataloader_v2 import *
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
-import talib as ta
+import ta
 
 def get_data(files,ptype):
     data = []
@@ -16,7 +16,7 @@ def get_data(files,ptype):
     return data
 def calculate(df):
     # Select numerical column
-    numerical_data = df['o'].to_numpy()
+    numerical_data = df.to_numpy()
     mean = np.mean(numerical_data)
     std = np.std(numerical_data)
     # Print test results
@@ -24,13 +24,11 @@ def calculate(df):
     print("std:", np.std(numerical_data))
     return mean,std
 def load_data(csv_file, test_size=0.1, val_size=0.2):
+    
     df = pd.read_csv(csv_file)
-    df['SMA'] = ta.SMA(df['c'], timeperiod = 20)
-    df['+DMI'] = ta.PLUS_DI(df['h'],df['l'],df['c'],timeperiod=14)
-    df['-DMI'] = ta.MINUS_DI(df['h'],df['l'],df['c'],timeperiod=14)
-    df['ADX'] = ta.ADX(df['h'],df['l'],df['c'],timeperiod=14)
-    df['RSI'] = ta.RSI(df['c'],14)
-    df['up_band'], df['mid_band'], df['low_band'] = ta.BBANDS(df['c'], timeperiod =20)
+    df = ta.add_all_ta_features(df, "o", "h", "l", "c", "vol", fillna=True)
+    df.dropna(inplace=True)
+    
     mean,std = calculate(df)
     train_val_df, test_df = train_test_split(df, test_size=test_size, shuffle=False, random_state=42)
     train_df, val_df = train_test_split(train_val_df, test_size=0.2, shuffle=False, random_state=42)
@@ -44,7 +42,7 @@ def load_data(csv_file, test_size=0.1, val_size=0.2):
 if __name__ == '__main__':
     data = []
     dev = torch.device("cpu")
-    train_dataset, val_dataset, test_dataset = load_data(csv_file='Dataset/test.csv')
+    train_dataset, val_dataset, test_dataset = load_data(csv_file='AI_tools\\Dataset\\test.csv')
     train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=1)
     val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False, num_workers=1)
     test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers=1)
@@ -69,7 +67,7 @@ if __name__ == '__main__':
     # # print(train_data.shape)
     # val_data = batchify(val_data,batch_size)
     # test_data = batchify(train_data,batch_size)
-    model = Transformer(n_blocks=4,d_model=16,n_heads=8,d_ff=256,dropout=0.5)
+    model = Transformer(n_blocks=4,d_model=96,n_heads=8,d_ff=256,dropout=0.5)
     # model = torch.load("modelb1024")
     model.to(dev)
     
@@ -90,6 +88,8 @@ if __name__ == '__main__':
         for batch in tqdm(train_loader):
             data, targets = batch
             targets = targets.view(-1,2)
+            print(data.shape,targets.shape)
+            # print(data,targets)
             output = model(data)
             output = output.view(-1,2)
             # print(output.shape)

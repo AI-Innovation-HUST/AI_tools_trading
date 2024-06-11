@@ -4,3 +4,4 @@ matplotlib
 numpy
 transformer
 seaborn
+ta

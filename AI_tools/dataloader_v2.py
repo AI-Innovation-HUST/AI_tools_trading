@@ -30,8 +30,19 @@ class CoinDataset(Dataset):
         trong đó u là mean 
         xich_ma là phân bố chuẩn
         '''
-        sample.append(abs((self.data_frame['o'][idx]-self.mean))/self.std)
-        target.append([(abs((self.data_frame['h'][idx+1]-self.mean))/self.std),(abs((self.data_frame['l'][idx+1]-self.mean))/self.std)])
+        sample = []
+        target = []
+        
+        # Normalize each column value
+        for column in self.data_frame.columns:
+            if column != 'ts':  # Skip 'ts' column if it's not needed
+                sample.append(abs((self.data_frame[column].iloc[idx] - self.mean) / self.std))
+        
+        target.append([(abs((self.data_frame['h'].iloc[idx+1] - self.mean) / self.std)), 
+                       (abs((self.data_frame['l'].iloc[idx+1] - self.mean) / self.std))])
+        # list = ['123']
+        # sample.append(abs((self.data_frame['c'][idx]-self.mean))/self.std)
+        # target.append([(abs((self.data_frame['h'][idx+1]-self.mean))/self.std),(abs((self.data_frame['l'][idx+1]-self.mean))/self.std)])
         
         # change value to tensor
 
