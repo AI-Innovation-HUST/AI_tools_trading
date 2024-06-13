@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import torch
 import random
 import pandas as pd
-import talib as ta
 
 class CoinDataset(Dataset):
     def __init__(self, data_frame,mean,std):
@@ -35,11 +34,10 @@ class CoinDataset(Dataset):
         
         # Normalize each column value
         for column in self.data_frame.columns:
-            if column != 'ts':  # Skip 'ts' column if it's not needed
-                sample.append(abs((self.data_frame[column].iloc[idx] - self.mean) / self.std))
+            if column not in ['ts','h','l']:  # Skip 'ts' column if it's not needed
+                sample.append(self.data_frame[column].iloc[idx])
         
-        target.append([(abs((self.data_frame['h'].iloc[idx+1] - self.mean) / self.std)), 
-                       (abs((self.data_frame['l'].iloc[idx+1] - self.mean) / self.std))])
+        target.append([self.data_frame['h'].iloc[idx+1],self.data_frame['l'].iloc[idx+1]])
         # list = ['123']
         # sample.append(abs((self.data_frame['c'][idx]-self.mean))/self.std)
         # target.append([(abs((self.data_frame['h'][idx+1]-self.mean))/self.std),(abs((self.data_frame['l'][idx+1]-self.mean))/self.std)])

@@ -3,11 +3,20 @@ import torch.nn as nn
 from model import *
 from dataloader_v2 import *
 from sklearn.model_selection import train_test_split
-from tqdm import tqdm
+from tqdm import tqdm_notebook
 import ta
 from scaler import *
+import time
+import matplotlib.pyplot as plt
+# from tqdm.notebook import tqdm
+from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 
+def compute_acc(pred, ground_truth,threshold=0.04):
+  diff = (pred - ground_truth) / ground_truth
+  score = torch.where(diff < threshold, 1.0, 0.0)
+  return score
 
 
 def get_data(files,ptype):
@@ -18,6 +27,7 @@ def get_data(files,ptype):
         data.extend(list(pair[ptype]))
         f.close()
     return data
+
 def calculate(df):
     # Select numerical column
     numerical_data = df.to_numpy()
@@ -49,90 +59,119 @@ def load_data(csv_file, test_size=0.1, val_size=0.2):
 
     return train_dataset, val_dataset, test_dataset
 
+class EarlyStopping:
+    def __init__(self, tolerance=5, min_delta=0):
 
+        self.tolerance = tolerance
+        self.min_delta = min_delta
+        self.counter = 0
+        self.early_stop = False
+
+    def __call__(self, train_loss, validation_loss):
+        if (validation_loss - train_loss) > self.min_delta:
+            self.counter +=1
+            if self.counter >= self.tolerance:  
+                self.early_stop = True
+        return self.early_stop
+
+def plot_diagram(e,data1,data2,label1,label2,label3):
+    plt.plot(e, data1, label=label1)
+    plt.plot(e, data2, label=label2)
+    plt.title('training transformer')
+    plt.xlabel('Epoch')
+    plt.ylabel(label3)
+    plt.legend()
+    plt.grid(True)
+    plt.savefig("{}_{}.png".format(label1,label2))
 
 if __name__ == '__main__':
     data = []
     dev = torch.device("cpu")
-    train_dataset, val_dataset, test_dataset = load_data(csv_file='AI_tools\\Dataset\\test.csv')
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=1)
+    train_dataset, val_dataset, test_dataset = load_data(csv_file='Dataset/test.csv')
+    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=1)
     val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False, num_workers=1)
     test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers=1)
     print("Train dataset size:", len(train_dataset))
     print("Validation dataset size:", len(val_dataset))
     print("Test dataset size:", len(test_dataset))
-
-    # procsd_data = load("Eavg_open.npy")
-    # procsd_data = get_data(["Dataset/test.csv"],"o")
-    # train_data =torch.tensor(procsd_data)[:30000*2]
-    # print(train_data.shape)
-    
-    # val_data = torch.tensor(procsd_data)[30000*2:35000*2]
-    # test_data = torch.tensor(procsd_data)[35000*2:]
-    # train_data = train_data.to(dev)
-    # val_data = val_data.to(dev)
-    # test_data = test_data.to(dev)
-    embs = torch.nn.Embedding(16,28)
-    # batch_size = 16
-    # ntokens = 28
-    # train_data = batchify(train_data,batch_size)
-    # # print(train_data.shape)
-    # val_data = batchify(val_data,batch_size)
-    # test_data = batchify(train_data,batch_size)
     model = Transformer(n_blocks=4,d_model=16,n_heads=8,d_ff=256,dropout=0.5)
     # model = torch.load("modelb1024")
     model.to(dev)
     
-    criterion = nn.L1Loss()
-    lr = 0.00001 # learning rate
-    
+    criterion = nn.HuberLoss(delta=0.5)
+    lr = 0.0001 # learning rate
+    early_stopping = EarlyStopping(tolerance=5, min_delta=0.003)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1.0, gamma=0.95)
     accuracies = []
     lossies = []
     val_loss = []
-    epochs = 1000
+    epochs = 100
+    train_loss = []
+    valid = []
+    check_acc = []
+    val_acc = []
     for epoch in range(epochs):
         count = 0
         cum_loss = 0
         acc_count = 0
         accs = 0
+        train_l = []
+        val_l = []
         for batch in tqdm(train_loader):
             data, targets = batch
-            targets = targets.view(-1,2)
-            print(data.shape,targets.shape)
-            print(data,targets)
-            output = model(data)
+            targets = targets.view(-1,2).to(dev)
+            # print(data.shape,targets.shape)
+            # print(data,targets)
+            output = model(data.to(dev))
             output = output.view(-1,2)
             # print(output.shape)
             loss = criterion(output.float(),targets.float())
+            
+            train_l.append(loss.item())
             # rev = ((output - embs.weight).abs().sum(1)).nonzero()
             # print("rev",rev)
 
             # print(loss)
-            # accs += ((torch.argmax(output,dim=1)==targets).sum().item()/output.size(0))
+            accs += (compute_acc(output,targets)).sum()/(2*(output.size(0)))
             cum_loss += loss
             loss.backward()
             optimizer.step()
             model.zero_grad()
             optimizer.zero_grad()
             count+=1
-        print(epoch,"Loss: ",(cum_loss/count).item())
-        if(epoch%50==1):
-            # lossies.append(cum_loss.detach().numpy()/count)
-            # accuracies.append(accs/count)
-            # legend = ["accuracy","Loss"]
-            # plot_subplots([accuracies,lossies],legend)
-            # print("Valdata",val_loader.shape)
-            print("------START EVAL------")
-            eval_loss = evaluate(model,epoch,criterion,val_loader)
-            print(epoch,"Loss: ",(cum_loss/count).item()," Valid_loss: ",eval_loss)
-            if len(val_loss)>0 and eval_loss < val_loss[-1]:
-                val_loss.append(eval_loss)
-                torch.save(model,"evalModel.pth")
-            else:
-                val_loss.append(eval_loss)
-                torch.save(model,"evalModel.pth")
+        train_ls = (cum_loss/count).item()
+        train_loss.append(train_ls)
+        check_acc.append((accs/count).item())
+        print(epoch,"Loss: ",(cum_loss/count).item(),"ACC:",(accs/count).item())
+        # lossies.append(cum_loss.detach().numpy()/count)
+        # accuracies.append(accs/count)
+        # legend = ["accuracy","Loss"]
+        # plot_subplots([accuracies,lossies],legend)
+        # print("Valdata",val_loader.shape)
+        print("------START EVAL------")
+        eval_loss,acc = evaluate(model,epoch,criterion,val_loader)
+        valid.append(eval_loss)
+        val_acc.append(acc)
+        print(epoch,"Loss: ",(cum_loss/count).item()," Valid_loss: ",eval_loss,"Valid acc: ",acc)
+        if len(val_loss)>0 and eval_loss < val_loss[-1]:
+            val_loss.append(eval_loss)
+            torch.save(model,"evalModel_best.pth")
+        else:
+            val_loss.append(eval_loss)
+            torch.save(model,"evalModel_best1.pth")
+        early_stop = early_stopping(train_ls,eval_loss)
+        # if early_stop:
+        #   torch.save(model,'best_model_{}.pth'.format(epoch+1))
+        #   print(" training done at {} epochs".format(epoch+1))
+        #   break
+    print(train_loss)
+    print(valid)
+    e = [i for i in range(epochs)]
+    plot_diagram(e,train_loss,valid,"Train loss","Valid loss","Loss")
+    plot_diagram(e,check_acc,val_acc,"Train accuracy","Valid accuracy","Accuracy")
 
-        if(epoch%200)==0:
-            torch.save(model,"modela.pth")
+
+
+
+      

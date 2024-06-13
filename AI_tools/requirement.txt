@@ -2,6 +2,7 @@ torch
 torchvision
 matplotlib
 numpy
-transformer
 seaborn
 ta
+tqdm
+scikit-learn

@@ -62,4 +62,4 @@ def plot_subplots(data,legends):
         plt.plot(list(range(0,len(data[i])*50,50)),data[i])
         plt.title(legends[i])
         plt.xlabel("Epochs")
-    plt.show()
+    plt.savefig("plot.png")

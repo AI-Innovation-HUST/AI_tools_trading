@@ -208,7 +208,7 @@ class TransformerDecoder(nn.Module):
                          d_ff=d_ff, dropout=dropout,n_heads=n_heads)
             for _ in range(n_blocks)
         ])
-        self.linear = nn.Linear(d_model,2)
+        self.linear = nn.Linear(16*92,2)
         self.soft = nn.Softmax(dim=2)
         
     def forward(self, x: torch.FloatTensor, 
@@ -216,15 +216,17 @@ class TransformerDecoder(nn.Module):
                 src_mask=None, tgt_mask=None):
         for decoder in self.decoders:
             x = decoder(x, enc_out, src_mask=src_mask, tgt_mask=tgt_mask)
-        # print(x.shape)
+        x = torch.reshape(x,(16,92,16))
+        x = torch.flatten(x,1)
+        # print("x:-----------",x.shape)
         y = self.linear(x)
-        y = self.soft(y)
-        # print(y.shape)
+        # y = self.soft(y)
+        # print("y:-----------",y.shape)
         return y
 
 class PositionalEmbedding(nn.Module):
     level = 1
-    def __init__(self, d_model, max_len=512):
+    def __init__(self, d_model, max_len=16*94):
         super().__init__()        
         # Compute the positional encodings once in log space.
         pe = torch.zeros(max_len, d_model)
@@ -250,8 +252,10 @@ class WordPositionEmbedding(nn.Module):
     def forward(self, x: torch.LongTensor, mask=None) -> torch.FloatTensor:
         x = torch.flatten(x,0)
         a = self.word_embedding(x.long())
+        # print("a:-----------------",a.shape)
                 
         b = self.position_embedding(x.unsqueeze(0).long())
+        # print("b:---------",b.shape)
 
         # print(a.shape,b.shape)
         return a + b
