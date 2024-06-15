@@ -11,10 +11,9 @@ import random
 import pandas as pd
 
 class CoinDataset(Dataset):
-    def __init__(self, data_frame,mean,std):
+    def __init__(self, data_frame):
         self.data_frame = data_frame
-        self.mean=mean
-        self.std=std
+        
 
     def __len__(self):
         # Calculate the number of samples considering potential padding
