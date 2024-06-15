@@ -91,7 +91,7 @@ if __name__ == '__main__':
     accuracies = []
     lossies = []
     val_loss = []
-    epochs = 2
+    epochs = 100
     train_loss = []
     valid = []
     check_acc_h_train = []
