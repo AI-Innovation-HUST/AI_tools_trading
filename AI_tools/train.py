@@ -73,7 +73,7 @@ def plot_diagram(e,data1,data2,label1,label2,label3):
 if __name__ == '__main__':
     data = []
     dev = torch.device("cpu")
-    train_dataset, val_dataset, test_dataset = load_data(csv_file='Dataset/test.csv')
+    train_dataset, val_dataset, test_dataset = load_data(csv_file='Dataset/data_1714496400000_1717174800000.csv')
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=1)
     val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False, num_workers=1)
     test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers=1)
